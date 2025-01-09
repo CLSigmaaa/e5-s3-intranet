@@ -1,0 +1,401 @@
+Resources:
+  # DynamoDB Tables
+  ValouEmployesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ValouEmployes
+      AttributeDefinitions:
+        - AttributeName: EmployeeID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EmployeeID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  ValouTrucksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ValouTrucks
+      AttributeDefinitions:
+        - AttributeName: TruckID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: TruckID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  ValouDeliveriesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ValouDeliveries
+      AttributeDefinitions:
+        - AttributeName: DeliveryID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: DeliveryID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # LambdaFunction
+  ValouEmployesLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ValouGetEmployes
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Code:
+        ZipFile: |
+          const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
+          const client = new DynamoDBClient();
+
+          exports.handler = async (event) => {
+              const params = { TableName: 'ValouEmployes' };
+              try {
+                  const data = await client.send(new ScanCommand(params));
+                  return {
+                      statusCode: 200,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify(data.Items),
+                  };
+              } catch (error) {
+                  return {
+                      statusCode: 500,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify({ error: error.message }),
+                  };
+              }
+          };
+
+      Role: !GetAtt ValouLambdaExecutionRole.Arn
+
+  ValouTrucksLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ValouGetTrucks
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Code:
+        ZipFile: |
+          const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
+          const client = new DynamoDBClient();
+
+          exports.handler = async (event) => {
+              const params = { TableName: 'ValouTrucks' };
+              try {
+                  const data = await client.send(new ScanCommand(params));
+                  return {
+                      statusCode: 200,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify(data.Items),
+                  };
+              } catch (error) {
+                  return {
+                      statusCode: 500,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify({ error: error.message }),
+                  };
+              }
+          };
+
+      Role: !GetAtt ValouLambdaExecutionRole.Arn
+
+  ValouDeliveriesLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ValouGetDeliveries
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Code:
+        ZipFile: |
+          const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
+          const client = new DynamoDBClient();
+
+          exports.handler = async (event) => {
+              const params = { TableName: 'ValouDeliveries' };
+              try {
+                  const data = await client.send(new ScanCommand(params));
+                  return {
+                      statusCode: 200,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify(data.Items),
+                  };
+              } catch (error) {
+                  return {
+                      statusCode: 500,
+                      headers: {
+                        "Access-Control-Allow-Origin" : "*", // Required for CORS support to work
+                        "Access-Control-Allow-Credentials" : true // Required for cookies, authorization headers with HTTPS
+                      },
+                      body: JSON.stringify({ error: error.message }),
+                  };
+              }
+          };
+      Role: !GetAtt ValouLambdaExecutionRole.Arn
+
+  ValouAddDataLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ValouAddData
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Code:
+        ZipFile: |
+          const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+          const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
+
+          const dynamoDBClient = new DynamoDBClient({ region: "eu-central-1" });
+          const dynamoDB = DynamoDBDocumentClient.from(dynamoDBClient);
+
+          const deliveriesData = [
+              { DeliveryID: '1', deliveryDate: '2024-12-16', destination: 'Paris', status: 'Completed' },
+              { DeliveryID: '2', deliveryDate: '2024-12-16', destination: 'Lyon', status: 'Pending' }
+          ];
+
+          const trucksData = [
+              { TruckID: 'T1', model: 'Volvo', capacity: 20, status: 'Active' },
+              { TruckID: 'T2', model: 'Scania', capacity: 25, status: 'Inactive' }
+          ];
+
+          const employeesData = [
+              { EmployeeID: 'E1', name: 'John Doe', position: 'Driver', status: 'Active' },
+              { EmployeeID: 'E2', name: 'Jane Smith', position: 'Mechanic', status: 'Active' }
+          ];
+
+          exports.handler = async () => {
+              try {
+                  const promises = [
+                      putItem("ValouDeliveries", deliveriesData),
+                      putItem("ValouTrucks", trucksData),
+                      putItem("ValouEmployes", employeesData),
+                  ];
+                  await Promise.all(promises);
+
+                  return {
+                      statusCode: 200,
+                      body: JSON.stringify({ message: "Data added successfully to all tables" }),
+                  };
+              } catch (error) {
+                  console.error("Error adding data to tables:", error);
+                  return {
+                      statusCode: 500,
+                      body: JSON.stringify({ message: "Failed to add data", error: error.message }),
+                  };
+              }
+          };
+
+          async function putItem(tableName, data) {
+              const promises = data.map(item => {
+                  const params = {
+                      TableName: tableName,
+                      Item: item,
+                  };
+                  return dynamoDB.send(new PutCommand(params));
+              });
+              await Promise.all(promises);
+          }
+      Role: !GetAtt ValouLambdaExecutionRole.Arn
+
+  ValouLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ValouLambdaDynamoDBExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ValouDynamoDBAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Scan
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: 
+                  - !GetAtt ValouEmployesTable.Arn
+                  - !GetAtt ValouTrucksTable.Arn
+                  - !GetAtt ValouDeliveriesTable.Arn
+
+  # API Gateway
+  ValouApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ValouCompanyApi
+
+  ValouEmployesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ValouApiGateway.RootResourceId
+      PathPart: employes
+      RestApiId: !Ref ValouApiGateway
+
+  ValouEmployesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref ValouEmployesResource
+      RestApiId: !Ref ValouApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValouEmployesLambdaFunction.Arn}/invocations
+
+  ValouEmployesLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValouEmployesLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ValouApiGateway}/*
+
+  ValouTrucksResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ValouApiGateway.RootResourceId
+      PathPart: trucks
+      RestApiId: !Ref ValouApiGateway
+
+  ValouTrucksMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref ValouTrucksResource
+      RestApiId: !Ref ValouApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValouTrucksLambdaFunction.Arn}/invocations
+
+  ValouTrucksLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValouTrucksLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ValouApiGateway}/*
+
+  ValouDeliveriesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ValouApiGateway.RootResourceId
+      PathPart: deliveries
+      RestApiId: !Ref ValouApiGateway
+
+  ValouDeliveriesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref ValouDeliveriesResource
+      RestApiId: !Ref ValouApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValouDeliveriesLambdaFunction.Arn}/invocations
+
+  ValouDeliveriesLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValouDeliveriesLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ValouApiGateway}/*
+  
+  ValouDataResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ValouApiGateway.RootResourceId
+      PathPart: data
+      RestApiId: !Ref ValouApiGateway
+
+  ValouDataMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref ValouDataResource
+      RestApiId: !Ref ValouApiGateway
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ValouAddDataLambdaFunction.Arn}/invocations
+  
+  ValouAddDataLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ValouAddDataLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ValouApiGateway}/*
+
+  # Deployment and Stage
+  ValouApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ValouDataMethod
+      - ValouEmployesMethod
+      - ValouTrucksMethod
+      - ValouDeliveriesMethod
+    Properties:
+      RestApiId: !Ref ValouApiGateway
+      StageName: prod
+
+  # S3 Bucket
+  ValouStaticWebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: Valou-static-website-bucket
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  ValouStaticWebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ValouStaticWebsiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action:
+             - s3:GetObject
+             - s3:PutObjectAcl
+             - s3:PutObject
+            Resource: !Sub '${ValouStaticWebsiteBucket.Arn}/*'
+
+Outputs:
+  ValouApiGatewayUrl:
+    Value: !Sub 'https://${ValouApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Description: URL de l'API Gateway.
+  ValouS3WebsiteUrl:
+    Value: !Sub 'http://${ValouStaticWebsiteBucket}.s3-website-${AWS::Region}.amazonaws.com'
+    Description: URL de l'hébergement web statique S3.
