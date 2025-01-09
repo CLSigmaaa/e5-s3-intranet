@@ -28,8 +28,8 @@ export default function Employe() {
 
   return (
     <div className="px-4 py-2 flex flex-col">
-      <h2 className="text-xl font-bold">Nom : {employe.name.S}</h2>
-      <p className="text-gray-600">Poste : {employe.position.S}</p>
+      <h2 className="text-3xl font-bold">Nom : {employe.name.S}</h2>
+      <p className="text-black font-semibold">Poste : {employe.position.S}</p>
     </div>
   );
 }
