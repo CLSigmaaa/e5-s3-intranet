@@ -366,7 +366,7 @@ Resources:
   ValouStaticWebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: intranet-valou.e5estiam.com
+      BucketName: valou-intranet-website-bucket
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html
